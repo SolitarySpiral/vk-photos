@@ -1,3 +1,3 @@
 login: ""  # Ваш логин он ВКонтакте
 password: ""  # Ваш пароль он ВКонтакте
-token: "vk1.a.uzZibap7pcffVmk9TqwCh8bE3XemBnd8ZBrCAPLE9xNHTL1effBWIkoS9vZIWSO3jZ_aPGmf_nLuGvUNCOkJ7oddVjetUREx-qLvq9BBnf4k2hGdR-bpTzxs7khk1pwxUR65x0ZWEBFNgpwILhspW3jAzHCL-HWARn71IhQe37VEWKsIwOCGg3h-5MTr45STwI2g07CYH7B0x6L0Xdcp3A"  # Ваш токен (для скачивания фото участников беседы)
+token: ""  # Ваш токен (для скачивания фото участников беседы)
