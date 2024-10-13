@@ -178,11 +178,11 @@ class UserPhotoDownloader:
                     "likes": photo["likes"]["count"],
                     "date": photo["date"]
                 })
-            
-            if len(raw_data) < 100:
+            print('saved_album getting {}'.format(len(raw_data)))
+            if len(raw_data) < 99: #bug with first 100 is 99
                 break
             offset += 100
-
+        print('saved_album got {}'.format(len(photos)))
         offset = 0
         while True:
             # Собираем фото с профиля
@@ -205,7 +205,7 @@ class UserPhotoDownloader:
                     "likes": photo["likes"]["count"],
                     "date": photo["date"]
                 })
-            
+            print('profile getting {}'.format(len(raw_data)))
             if len(raw_data) < 100:
                 break
             offset += 100
@@ -232,7 +232,7 @@ class UserPhotoDownloader:
                     "likes": photo["likes"]["count"],
                     "date": photo["date"]
                 })
-            
+            print('user_wall getting {}'.format(len(raw_data)))
             if len(raw_data) < 100:
                 break
             offset += 100
@@ -257,7 +257,7 @@ class UserPhotoDownloader:
                     "likes": photo["likes"]["count"],
                     "date": photo["date"]
                 })
-            
+            print('getAll getting {}'.format(len(raw_data)))
             if len(raw_data) < 100:
                 break
             offset += 100
@@ -736,7 +736,7 @@ if __name__ == '__main__':
     print("4. Скачать все фотографии нескольких групп")
     print("5. Скачать все фотографии участников беседы")
     print("6. Скачать все вложения беседы")
-    print("7. Скачать все фотографии пользователя")
+    print("7. Скачать все фотографии чата с пользователем")
 
     while True:
         time.sleep(0.1)
