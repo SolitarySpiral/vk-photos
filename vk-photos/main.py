@@ -677,19 +677,27 @@ class ChatUserPhotoDownloader:
         self.parent_dir = parent_dir
 
     def get_attachments(self):
-        raw_data = vk.messages.getHistoryAttachments(
-            peer_id=self.chat_id,
-            media_type="photo"
-        )["items"]
-
+        
         photos = []
+        offset = 0
+        while True:
+            raw_data = vk.messages.getHistoryAttachments(
+                peer_id=self.chat_id,
+                count=200,
+                offset=offset,
+                media_type="photo"
+            )["items"]
 
-        for photo in raw_data:
-            photos.append({
-                "id": photo["attachment"]["photo"]["id"],
-                "owner_id": photo["attachment"]["photo"]["owner_id"],
-                "url": photo["attachment"]["photo"]["sizes"][-1]["url"]
-            })
+            for photo in raw_data:
+                photos.append({
+                    "id": photo["attachment"]["photo"]["id"],
+                    "owner_id": photo["attachment"]["photo"]["owner_id"],
+                    "url": photo["attachment"]["photo"]["sizes"][-1]["url"]
+                })
+            print('attachments getting {}'.format(len(raw_data)))
+            if len(raw_data) < 200:
+                break
+            offset += 200
 
         return photos
     async def main(self):
