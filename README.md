@@ -72,6 +72,7 @@ python vk-photos/main.py
 
 <h2 align="center">(5) Скачать все фотографии участников беседы</h2>
 (ВНИМАНИЕ! Функция соберет список учатников беседы и попытается скачать все доступные фотографии этих пользователей из их профилей)
+
 Введите id беседы
 ```bash
 > 156
@@ -81,6 +82,7 @@ python vk-photos/main.py
 
 <h2 align="center">(6) Скачать все вложения беседы</h2>
 (ВНИМАНИЕ! Функция скачивает из вложений только фотографии)
+
 Введите id беседы
 ```bash
 > 156
@@ -89,12 +91,10 @@ python vk-photos/main.py
 ***[Гайд, как узнать id беседы](https://online-vkontakte.ru/2019/01/kak-uznat-id-besedy-v-vk.html)***
 
 <h2 align="center">(7) Скачать все фотографии чата с пользователем</h2>
+
 Введите id беседы
 ```bash
 > 388874445
 ```
 
-После того, как все фотографии скачаются, появится папка 'Фотки' c фотографиями<br><br>
-![](https://github.com/YarikMix/vk-photos/raw/main/images/1.png)<br><br>
-![](https://github.com/YarikMix/vk-photos/raw/main/images/2.png)<br><br>
-![](https://github.com/YarikMix/vk-photos/raw/main/images/3.png)
+После того, как все фотографии скачаются, появится папка 'Фотки' c фотографиями
