@@ -1,26 +1,20 @@
-import os
-import sys
 import math
 import time
 import logging
 from pathlib import Path
-# from PIL import Image, ImageChops
 
 import yaml
 import requests
-import aiohttp
-import aiofiles
 import asyncio
 import vk_api
-import tqdm
 from pytils import numeral
+from datetime import datetime
 
 from filter import check_for_duplicates
 from functions import (
     decline,
-    download_photo,
     download_photos,
-    write_json
+    download_videos
 )
 
 
@@ -75,12 +69,13 @@ class Utils:
             vk_session = vk_api.VkApi(
                 token=config["token"]
             )
+            logging.info('Вы успешно авторизовались.')
         except Exception as e:
             logging.info("Неправильный токен")
             logging.info("Токен можно получить здесь https://vkhost.github.io/")
             exit()
         finally:
-            logging.info('Вы успешно авторизовались.')
+            #logging.info('Вы успешно авторизовались.')
             return vk_session.get_api()
 
     def check_user_id(self, id: str) -> bool:
@@ -175,14 +170,13 @@ class UserPhotoDownloader:
                     "id": photo["id"],
                     "owner_id": photo["owner_id"],
                     "url": photo["sizes"][-1]["url"],
-                    "likes": photo["likes"]["count"],
-                    "date": photo["date"]
+                    "date": datetime.fromtimestamp(int(photo["date"])).strftime('%Y-%m-%d %H-%M-%S')
                 })
-            print('saved_album getting {}'.format(len(raw_data)))
+            logging.info("saved_album getting %s" % len(raw_data))
             if len(raw_data) < 99: #bug with first 100 is 99
                 break
             offset += 100
-        print('saved_album got {}'.format(len(photos)))
+
         offset = 0
         while True:
             # Собираем фото с профиля
@@ -202,10 +196,9 @@ class UserPhotoDownloader:
                     "id": photo["id"],
                     "owner_id": photo["owner_id"],
                     "url": photo["sizes"][-1]["url"],
-                    "likes": photo["likes"]["count"],
-                    "date": photo["date"]
+                    "date": datetime.fromtimestamp(int(photo["date"])).strftime('%Y-%m-%d %H-%M-%S')
                 })
-            print('profile getting {}'.format(len(raw_data)))
+            logging.info("profile getting %s" % len(raw_data))
             if len(raw_data) < 100:
                 break
             offset += 100
@@ -229,10 +222,9 @@ class UserPhotoDownloader:
                     "id": photo["id"],
                     "owner_id": photo["owner_id"],
                     "url": photo["sizes"][-1]["url"],
-                    "likes": photo["likes"]["count"],
-                    "date": photo["date"]
+                    "date": datetime.fromtimestamp(int(photo["date"])).strftime('%Y-%m-%d %H-%M-%S')
                 })
-            print('user_wall getting {}'.format(len(raw_data)))
+            logging.info("user_wall getting %s" % len(raw_data))
             if len(raw_data) < 100:
                 break
             offset += 100
@@ -254,10 +246,9 @@ class UserPhotoDownloader:
                     "id": photo["id"],
                     "owner_id": photo["owner_id"],
                     "url": photo["sizes"][-1]["url"],
-                    "likes": photo["likes"]["count"],
-                    "date": photo["date"]
+                    "date": datetime.fromtimestamp(int(photo["date"])).strftime('%Y-%m-%d %H-%M-%S')
                 })
-            print('getAll getting {}'.format(len(raw_data)))
+            logging.info("getAll getting %s" % len(raw_data))
             if len(raw_data) < 100:
                 break
             offset += 100
@@ -338,7 +329,8 @@ class GroupPhotoDownloader:
     def __init__(self, group_id: str):
         self.group_id = int(group_id)
 
-    async def get_photos(self):
+    async def get_photos(self, download_videos):
+
         offset = 0
         while True:
             posts = vk.wall.get(
@@ -360,70 +352,81 @@ class GroupPhotoDownloader:
                 elif "attachments" in post:
                     self.get_single_post(post)
 
+            logging.info("wall getting %s" % len(posts))
             if len(posts) < 100:
                 break
-
             offset += 100
         
+        offset = 0
+        while True:
+            all_photos = vk.photos.getAll(
+                owner_id=-self.group_id,
+                extended=True,
+                count=100,
+                offset=offset
+            )["items"]
 
-    # Todo: понять как использовать get_all_iter
-    # def test(self):
-    #     self.photos = []
-    #     posts = vk.get_all_iter(
-    #         method="wall.get",
-    #         max_count=500,
-    #         values={
-    #             "owner_id": -self.group_id,
-    #             "count": 100,
-    #         }
-    #     )
-    #     print(len(posts))
+            raw_data = all_photos#photos_by_wall + photos_by_profile
+            logging.info("getAll getting %s" % len(raw_data))
+            for photo in raw_data:
+                self.photos.append({
+                    "id": photo["id"],
+                    "owner_id": photo["owner_id"],
+                    "url": photo["sizes"][-1]["url"],
+                    "date": datetime.fromtimestamp(int(photo["date"])).strftime('%Y-%m-%d %H-%M-%S')
+                })
+            #logging.info("getAll getting %s" % len(raw_data))
+            if len(raw_data) < 100:
+                break
+            offset += 100
+
+        if download_videos == "1":
+            logging.info("Получаем список видео")
+            offset = 0
+            while True:
+                videos = vk.video.get(
+                    owner_id=-self.group_id,
+                    count=100,
+                    offset=offset
+                )["items"]
+                for video in videos:
+                    if "player" in video:
+                        self.videos_list.append({
+                            "type": video.get("type"),
+                            "id": video.get("id"),
+                            "owner_id": video.get("owner_id"),
+                            "title": video.get("title"),
+                            "player": video.get("player"),
+                            "date": datetime.fromtimestamp(int(video.get("date"))).strftime('%Y-%m-%d %H-%M-%S')
+                        })
+
+                if len(videos) < 100:
+                    logging.info("Videos got %s" % len(self.videos_list))
+                    break
+
+                offset += 100
 
     def get_single_post(self, post: dict):
         """
         Проходимся по всем вложениям поста и отбираем только картинки
         """
-        
-        for i, attachment in enumerate(post["attachments"]):
-            if attachment["type"] == "photo":
-                file_type = attachment["type"]
-                photo_id = post["attachments"][i]["photo"]["id"]
-                owner_id = post["attachments"][i]["photo"]["owner_id"]
-                photo_url = post["attachments"][i]["photo"]["sizes"][-1]["url"]
-                if "likes" in post:
-                    likes_count = post["likes"]["count"]
-                    self.photos.append({
-                        "type": file_type,
-                        "id": photo_id,
-                        "owner_id": -owner_id,
-                        "url": photo_url,
-                        "likes": likes_count
-                    })
-            '''Too slow      
-            if attachment["type"] == "video":
-                file_type = attachment["type"]
-                photo_id = post["attachments"][i]["video"]["id"]
-                owner_id = post["attachments"][i]["video"]["owner_id"]
-                vid_resp = vk.video.get(owner_id=owner_id, id=photo_id, v=5.199, access_token=vk.token)["items"][0]["files"]#["mp4_1080"]
-                if "mp4_1080" in vid_resp:
-                    photo_url = vid_resp["mp4_1080"]
-                    print(photo_url)
-                elif "mp4_720" in vid_resp:
-                    photo_url = vid_resp["mp4_720"]
-                    print(photo_url)
-                else:
-                    photo_url = vid_resp["mp4_480"]
-
-                if "likes" in post:
-                    likes_count = post["likes"]["count"]
-                    self.photos.append({
-                        "type": file_type,
-                        "id": photo_id,
-                        "owner_id": -owner_id,
-                        "url": photo_url,
-                        "likes": likes_count
-                    })
-                    '''  
+        try:
+            for i, attachment in enumerate(post["attachments"]):
+                if attachment["type"] == "photo":
+                    file_type = attachment["type"]
+                    photo_id = post["attachments"][i]["photo"]["id"]
+                    owner_id = post["attachments"][i]["photo"]["owner_id"]
+                    photo_url = post["attachments"][i]["photo"]["sizes"][-1].get("url")
+                    if photo_url != None or photo_url != '':
+                        self.photos.append({
+                            "type": file_type,
+                            "id": photo_id,
+                            "owner_id": -owner_id,
+                            "url": photo_url,
+                            "date": datetime.fromtimestamp(int(post["attachments"][i]["photo"]["date"])).strftime('%Y-%m-%d %H-%M-%S')
+                        })
+        except Exception as e:
+            print(e)
 
     async def main(self):
         # Получаем информацию о группе
@@ -434,6 +437,7 @@ class GroupPhotoDownloader:
         utils.create_dir(group_dir)
 
         self.photos = []
+        self.videos_list = []
 
         # Группа закрыта
         if group_info["is_closed"]:
@@ -444,24 +448,44 @@ class GroupPhotoDownloader:
                 "url": "https://vk.com/images/community_200.png"
             }]
         else:
-            logging.info(f"Получаем фотографии группы '{group_name}'...")
+            download_vid = input("Скачать также видео? 1-да 2-нет\n> ")
+            if download_vid == "1":
+                logging.info(f"Получаем фотографии и видео группы '{group_name}'...")
+                await self.get_photos(download_vid)
+                logging.info("{} {} {}".format(
+                numeral.choose_plural(len(self.photos), "Будет, Будут, Будут"),
+                numeral.choose_plural(len(self.photos), "скачена, скачены, скачены"),
+                numeral.get_plural(len(self.photos), "фотография, фотографии, фотографий")
+                ))
+
+                time_start = time.time()
+
+                # Скачиваем фотографии со стены группы
+                await download_photos(group_dir, self.photos)
+                logging.info("Скачиваем видео")
+                await download_videos(group_dir, self.videos_list)
+
+            elif download_vid == "2":
+                logging.info(f"Получаем фотографии группы '{group_name}'...")
+                await self.get_photos(download_vid)
+                logging.info("{} {} {}".format(
+                numeral.choose_plural(len(self.photos), "Будет, Будут, Будут"),
+                numeral.choose_plural(len(self.photos), "скачена, скачены, скачены"),
+                numeral.get_plural(len(self.photos), "фотография, фотографии, фотографий")
+                ))
+
+                time_start = time.time()
+
+                # Скачиваем фотографии со стены группы
+                await download_photos(group_dir, self.photos)
+            else:
+                logging.info("Введено некорректное значение")
+                time.sleep(0.1)
+                exit
+            #logging.info(f"Получаем фотографии группы '{group_name}'...")
 
             # Получаем фотографии со стены группы
-            await self.get_photos()
-
-        # Сортируем фотографии по количеству лайков
-        self.photos.sort(key=lambda k: k["likes"], reverse=True)
-
-        logging.info("{} {} {}".format(
-            numeral.choose_plural(len(self.photos), "Будет, Будут, Будут"),
-            numeral.choose_plural(len(self.photos), "скачена, скачены, скачены"),
-            numeral.get_plural(len(self.photos), "фотография, фотографии, фотографий")
-        ))
-
-        time_start = time.time()
-
-        # Скачиваем фотографии со стены группы
-        await download_photos(group_dir, self.photos)
+            #await self.get_photos(group_dir)
 
         time_finish = time.time()
         download_time = math.ceil(time_finish - time_start)
@@ -630,7 +654,8 @@ class ChatPhotoDownloader:
             photos.append({
                 "id": photo["attachment"]["photo"]["id"],
                 "owner_id": photo["attachment"]["photo"]["owner_id"],
-                "url": photo["attachment"]["photo"]["sizes"][-1]["url"]
+                "url": photo["attachment"]["photo"]["sizes"][-1]["url"],
+                "date": datetime.fromtimestamp(int(photo["attachment"]["photo"]["date"])).strftime('%Y-%m-%d %H-%M-%S')
             })
 
         return photos
@@ -692,7 +717,8 @@ class ChatUserPhotoDownloader:
                 photos.append({
                     "id": photo["attachment"]["photo"]["id"],
                     "owner_id": photo["attachment"]["photo"]["owner_id"],
-                    "url": photo["attachment"]["photo"]["sizes"][-1]["url"]
+                    "url": photo["attachment"]["photo"]["sizes"][-1]["url"],
+                    "date": datetime.fromtimestamp(int(photo["attachment"]["photo"]["date"])).strftime('%Y-%m-%d %H-%M-%S')
                 })
             print('attachments getting {}'.format(len(raw_data)))
             if len(raw_data) < 200:
