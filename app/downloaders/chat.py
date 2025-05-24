@@ -1,21 +1,23 @@
 from datetime import datetime
 import requests
 from logger import logger
-from downloaders.loader import (
+from downloaders.loader import (Checker,
     download_photos,
 )
 from downloaders.user import UsersPhotoDownloader
 from filter import check_for_duplicates
 
 class ChatMembersPhotoDownloader:
-    def __init__(self, chat_id: str, parent_dir, vk, utils):
+    def __init__(self, chat_id: str, parent_dir, vk, utils, download_videos = False):
         self.chat_id = int(chat_id)
         self.parent_dir = parent_dir
         self.vk = vk
         self.utils = utils
+        self.download_videos = download_videos
 
     async def main(self):
-        chat_title = self.utils.get_chat_title(self.chat_id)
+        self.checker = Checker(self.vk)
+        chat_title = self.checker.get_chat_title(self.chat_id)
         chat_path = self.parent_dir.joinpath(chat_title)
 
         # Создаём папку с фотографиями участников беседы, если её не существует
@@ -35,17 +37,18 @@ class ChatMembersPhotoDownloader:
                 if member_id > 0:
                     members_ids.append(member_id)
 
-            members_ids.remove(self.utils.get_user_id())
+            members_ids.remove(self.checker.get_user_id())
 
-            await UsersPhotoDownloader(user_ids=members_ids, parent_dir=chat_path, vk=self.vk, utils=self.utils).main()
+            await UsersPhotoDownloader(members_ids, chat_path, self.vk, self.utils, self.download_videos).main()
 
 
 class ChatPhotoDownloader:
-    def __init__(self, chat_id: str, parent_dir, vk, utils):
+    def __init__(self, chat_id: str, parent_dir, vk, utils, download_videos = False):
         self.chat_id = int(chat_id)
         self.parent_dir = parent_dir
         self.vk = vk
         self.utils = utils
+        self.download_videos = download_videos
 
     def download_chat_photo(self):
         """
@@ -81,7 +84,8 @@ class ChatPhotoDownloader:
         return photos
 
     async def main(self):
-        chat_title = self.utils.get_chat_title(self.chat_id)
+        self.checker = Checker(self.vk)
+        chat_title = self.checker.get_chat_title(self.chat_id)
         photos_path = self.parent_dir.joinpath(chat_title)
         if not photos_path.exists():
             logger.info(f"Создаём папку с фотографиями беседы '{chat_title}'")
@@ -100,11 +104,12 @@ class ChatPhotoDownloader:
 
 
 class ChatUserPhotoDownloader:
-    def __init__(self, chat_id: str, parent_dir, vk, utils):
+    def __init__(self, chat_id: str, parent_dir, vk, utils, download_videos = False):
         self.chat_id = int(chat_id)
         self.parent_dir = parent_dir
         self.vk = vk
         self.utils = utils
+        self.download_videos = download_videos
 
     def get_attachments(self):
         
@@ -125,7 +130,7 @@ class ChatUserPhotoDownloader:
                     "url": photo["attachment"]["photo"]["sizes"][-1]["url"],
                     "date": datetime.fromtimestamp(int(photo["attachment"]["photo"]["date"])).strftime('%Y-%m-%d %H-%M-%S')
                 })
-            logger('attachments getting {}'.format(len(raw_data)))
+            logger.info('attachments getting {}'.format(len(raw_data)))
             if len(raw_data) < 200:
                 break
             offset += 200
@@ -133,7 +138,8 @@ class ChatUserPhotoDownloader:
         return photos
     
     async def main(self):
-        username = self.utils.get_username(self.chat_id)
+        self.checker = Checker(self.vk)
+        username = self.checker.get_username(self.chat_id)
 
         photos_path = self.parent_dir.joinpath(f"Переписка {username}")
         self.utils.create_dir(photos_path)

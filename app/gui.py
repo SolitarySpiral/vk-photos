@@ -196,7 +196,7 @@ class App:
         if check_func(ids):
             downloader = loader_class(ids, root_dir, self.vk, self.utils, download_video)
             def run_async():
-                loop.run_until_complete(downloader.main(on_progress=self.update_progress))
+                loop.run_until_complete(downloader.main())
                 #asyncio.run(downloader.main())  # запускается в фоновом потоке
             threading.Thread(target=run_async, daemon=True).start()
         else:

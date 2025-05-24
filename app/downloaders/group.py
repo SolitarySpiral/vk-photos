@@ -167,4 +167,4 @@ class GroupsPhotoDownloader:
 
     async def main(self):
         for group_id in self.group_ids:
-            await GroupPhotoDownloader(group_id, self.parent_dir, self.vk, self.utils).main()
+            await GroupPhotoDownloader(group_id, self.parent_dir, self.vk, self.utils, self.download_videos).main()

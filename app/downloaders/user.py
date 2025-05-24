@@ -1,16 +1,18 @@
 from datetime import datetime
 from logger import logger
 from downloaders.loader import (
+    Checker,
     decline,
     download_photos,
 )
 
 class UserPhotoDownloader:
-    def __init__(self, user_id, parent_dir, vk, utils):
+    def __init__(self, user_id, parent_dir, vk, utils, download_videos = False):
         self.user_id = int(user_id)
         self.parent_dir = parent_dir
         self.vk = vk
         self.utils = utils
+        self.download_videos = download_videos
 
     def get_photos(self):
         photos = []
@@ -120,6 +122,7 @@ class UserPhotoDownloader:
         return photos
 
     async def main(self):
+        self.checker = Checker(self.vk)
         user_info = self.vk.users.get(
             user_ids=self.user_id,
             fields="sex, photo_max_orig"
@@ -131,7 +134,7 @@ class UserPhotoDownloader:
             sex=user_info["sex"]
         )
 
-        username = self.utils.get_username(self.user_id)
+        username = self.checker.get_username(self.user_id)
 
         photos_path = self.parent_dir.joinpath(username)
         self.utils.create_dir(photos_path)
@@ -164,12 +167,13 @@ class UserPhotoDownloader:
 
 
 class UsersPhotoDownloader:
-    def __init__(self, user_ids: list, parent_dir, vk, utils):
+    def __init__(self, user_ids: list, parent_dir, vk, utils, download_videos = False):
         self.user_ids = [id for id in user_ids]
         self.parent_dir = parent_dir
         self.vk = vk
         self.utils = utils
+        self.download_videos = download_videos
 
     async def main(self):
         for user_id in self.user_ids:
-            await UserPhotoDownloader(user_id, self.parent_dir, self.vk, self.utils).main()
+            await UserPhotoDownloader(user_id, self.parent_dir, self.vk, self.utils, self.download_videos).main()
